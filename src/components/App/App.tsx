@@ -1,10 +1,6 @@
 import { useRef, useState } from 'react'
 import './App.scss'
 
-async function getDesktop() {
-  return await navigator.mediaDevices.getDisplayMedia({ video: true })
-}
-
 interface ILog {
   type: 'success' | 'error' | 'info'
   message: string
@@ -15,9 +11,11 @@ function App() {
   const [logs, setLogs] = useState<ILog[]>([])
   const webCam = useRef<MediaStream | null>(null)
   const desctop = useRef<MediaStream | null>(null)
+  const mixed = useRef<MediaStream | null>(null)
 
   const webcamRef = useRef<HTMLVideoElement>(null)
   const desctopRef = useRef<HTMLVideoElement>(null)
+  const mixedRef = useRef<HTMLVideoElement>(null)
 
   function getWebCam() {
     navigator.mediaDevices
@@ -49,6 +47,35 @@ function App() {
         ])
       )
   }
+
+  function getDesktop() {
+    navigator.mediaDevices
+      .getDisplayMedia({ video: true })
+      .then((stream) => {
+        desctop.current = stream
+        desctopRef.current!.srcObject = stream
+        setLogs((p) => [
+          ...p,
+          {
+            id: Date.now(),
+            type: 'info',
+            message: 'Получен видеопоток рабочего стола',
+          },
+        ])
+      })
+      .catch(() =>
+        setLogs((p) => [
+          ...p,
+          {
+            id: Date.now(),
+            type: 'error',
+            message: 'Ошибка получения видео потока рабочего стола',
+          },
+        ])
+      )
+  }
+
+  const merge = () => {}
 
   // let canvas = document.createElement('canvas')
   // let context = canvas.getContext('2d')
@@ -93,14 +120,15 @@ function App() {
         <div className="video  section">
           <video ref={webcamRef} muted autoPlay />
         </div>
-        <div className="video  section">
+        <div className="video section">
           <video ref={desctopRef} muted autoPlay />
         </div>
-        <div className="video  section">
-          <video ref={desctopRef} muted autoPlay />
+        <div className="video section">
+          <video ref={mixedRef} muted autoPlay />
         </div>
         <div className="control">
           <button onClick={getWebCam}>camera</button>
+          <button onClick={getDesktop}>desctop</button>
         </div>
       </div>
       <div className="log-list">

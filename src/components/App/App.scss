@@ -1,0 +1,56 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: sans-serif;
+}
+
+.video-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.video {
+  height: 300px;
+
+  video {
+    // height: 100%;
+    width: 100%;
+    object-fit: contain;
+  }
+}
+
+.section {
+  width: 33.333%;
+  border-bottom: 1px solid;
+  border-top: 1px solid;
+  border-left: 1px solid;
+  aspect-ratio: 12 / 9;
+}
+
+.control {
+  padding: 15px;
+}
+
+.log-list {
+  background-color: #000;
+  flex-grow: 1;
+}
+
+.container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.info {
+  color: white;
+}
+
+.success {
+  color: green;
+}
+
+.error {
+  color: tomato;
+}

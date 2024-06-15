@@ -10,11 +10,11 @@ interface ILog {
 function App() {
   const [logs, setLogs] = useState<ILog[]>([])
   const webCam = useRef<MediaStream | null>(null)
-  const desctop = useRef<MediaStream | null>(null)
+  const desktop = useRef<MediaStream | null>(null)
   const mixed = useRef<MediaStream | null>(null)
 
   const webcamRef = useRef<HTMLVideoElement>(null)
-  const desctopRef = useRef<HTMLVideoElement>(null)
+  const desktopRef = useRef<HTMLVideoElement>(null)
   const mixedRef = useRef<HTMLVideoElement>(null)
 
   function getWebCam() {
@@ -52,8 +52,8 @@ function App() {
     navigator.mediaDevices
       .getDisplayMedia({ video: true })
       .then((stream) => {
-        desctop.current = stream
-        desctopRef.current!.srcObject = stream
+        desktop.current = stream
+        desktopRef.current!.srcObject = stream
         setLogs((p) => [
           ...p,
           {
@@ -75,44 +75,70 @@ function App() {
       )
   }
 
-  const merge = () => {}
+  const merge = () => {
+    try {
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
+      // 1024x576 - 16:9
+      canvas.width = 1024
+      canvas.height = 576
+      if (!desktop.current || !desktopRef.current) {
+        return setLogs((p) => [
+          ...p,
+          {
+            id: Date.now(),
+            type: 'error',
+            message: 'Видео поток демонстрации рабочего стола не найден',
+          },
+        ])
+      }
 
-  // let canvas = document.createElement('canvas')
-  // let context = canvas.getContext('2d')
+      ;(function draw() {
+        if (context) {
+          context.drawImage(
+            desktopRef.current as CanvasImageSource,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          )
 
-  // // 1024x576 - 16:9
-  // canvas.width = 1024
-  // canvas.height = 576
-  // ;(function draw() {
-  //   context.drawImage(desktop, 0, 0, canvas.width, canvas.height)
+          // 200x150 - 4:3
+          const w = 250
+          const h = 150
+          context.drawImage(
+            webcamRef.current as CanvasImageSource,
+            canvas.width - w,
+            canvas.height - h,
+            w,
+            h
+          )
 
-  //   // 200x150 - 4:3
-  //   let w = 200
-  //   let h = 150
-  //   context.drawImage(webCam, canvas.width - w, canvas.height - h, w, h)
+          requestAnimationFrame(draw)
+        }
+      })()
 
-  //   requestAnimationFrame(draw)
-  // })()
-
-  // // Вот тут вы получаете тот результат который хотели
-  // let resultMediaStream = canvas.captureStream()
-
-  // // Но для примера выводим на страницу
-  // let video = streamToVideo(resultMediaStream)
-  // document.body.appendChild(video)
-
-  // function streamToVideo(stream) {
-  //   let video = document.createElement('video')
-
-  //   video.srcObject = stream
-
-  //   video.style.width = stream.width
-  //   video.style.height = stream.height
-
-  //   video.play()
-
-  //   return video
-  // }
+      mixed.current = canvas.captureStream()
+      mixedRef.current!.srcObject = mixed.current
+      setLogs((p) => [
+        ...p,
+        {
+          id: Date.now(),
+          type: 'success',
+          message: 'Слияние поток выполнено успешно',
+        },
+      ])
+    } catch (e: any) {
+      setLogs((p) => [
+        ...p,
+        {
+          id: Date.now(),
+          type: 'error',
+          message: `ошибка слияния потоков - ${e.message}`,
+        },
+      ])
+    }
+  }
 
   return (
     <div className="container">
@@ -121,7 +147,7 @@ function App() {
           <video ref={webcamRef} muted autoPlay />
         </div>
         <div className="video section">
-          <video ref={desctopRef} muted autoPlay />
+          <video ref={desktopRef} muted autoPlay />
         </div>
         <div className="video section">
           <video ref={mixedRef} muted autoPlay />
@@ -129,6 +155,7 @@ function App() {
         <div className="control">
           <button onClick={getWebCam}>camera</button>
           <button onClick={getDesktop}>desctop</button>
+          <button onClick={merge}>merge</button>
         </div>
       </div>
       <div className="log-list">

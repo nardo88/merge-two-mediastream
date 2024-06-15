@@ -1,21 +1,32 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Socket, io } from 'socket.io-client'
 import './App.scss'
 
+type LogType = 'success' | 'error' | 'info'
+
 interface ILog {
-  type: 'success' | 'error' | 'info'
+  type: LogType
   message: string
   id: number
 }
 
 function App() {
   const [logs, setLogs] = useState<ILog[]>([])
+  const [isRecord, setIsRecord] = useState(false)
+
   const webCam = useRef<MediaStream | null>(null)
   const desktop = useRef<MediaStream | null>(null)
   const mixed = useRef<MediaStream | null>(null)
+  const mediaRecorder = useRef<MediaRecorder | null>(null)
+  const socket = useRef<Socket | null>(null)
 
   const webcamRef = useRef<HTMLVideoElement>(null)
   const desktopRef = useRef<HTMLVideoElement>(null)
   const mixedRef = useRef<HTMLVideoElement>(null)
+
+  function setNewLog(message: string, type: LogType) {
+    setLogs((p) => [...p, { id: Date.now(), message, type }])
+  }
 
   function getWebCam() {
     navigator.mediaDevices
@@ -27,25 +38,9 @@ function App() {
       .then((stream) => {
         webcamRef.current!.srcObject = stream
         webCam.current = stream
-        setLogs((p) => [
-          ...p,
-          {
-            id: Date.now(),
-            type: 'info',
-            message: 'Получен видеопоток с веб камеры',
-          },
-        ])
+        setNewLog('Получен видеопоток с веб камеры', 'info')
       })
-      .catch(() =>
-        setLogs((p) => [
-          ...p,
-          {
-            id: Date.now(),
-            type: 'error',
-            message: 'Ошибка получения доступа к веб камере',
-          },
-        ])
-      )
+      .catch(() => setNewLog('Ошибка получения доступа к веб камере', 'error'))
   }
 
   function getDesktop() {
@@ -54,24 +49,10 @@ function App() {
       .then((stream) => {
         desktop.current = stream
         desktopRef.current!.srcObject = stream
-        setLogs((p) => [
-          ...p,
-          {
-            id: Date.now(),
-            type: 'info',
-            message: 'Получен видеопоток рабочего стола',
-          },
-        ])
+        setNewLog('Получен видеопоток рабочего стола', 'info')
       })
       .catch(() =>
-        setLogs((p) => [
-          ...p,
-          {
-            id: Date.now(),
-            type: 'error',
-            message: 'Ошибка получения видео потока рабочего стола',
-          },
-        ])
+        setNewLog('Ошибка получения видео потока рабочего стола', 'error')
       )
   }
 
@@ -83,14 +64,7 @@ function App() {
       canvas.width = 1024
       canvas.height = 576
       if (!desktop.current || !desktopRef.current) {
-        return setLogs((p) => [
-          ...p,
-          {
-            id: Date.now(),
-            type: 'error',
-            message: 'Видео поток демонстрации рабочего стола не найден',
-          },
-        ])
+        setNewLog('Видео поток демонстрации рабочего стола не найден', 'error')
       }
 
       ;(function draw() {
@@ -120,25 +94,55 @@ function App() {
 
       mixed.current = canvas.captureStream()
       mixedRef.current!.srcObject = mixed.current
-      setLogs((p) => [
-        ...p,
-        {
-          id: Date.now(),
-          type: 'success',
-          message: 'Слияние поток выполнено успешно',
-        },
-      ])
+      setNewLog('Слияние поток выполнено успешно', 'success')
     } catch (e: any) {
-      setLogs((p) => [
-        ...p,
-        {
-          id: Date.now(),
-          type: 'error',
-          message: `ошибка слияния потоков - ${e.message}`,
-        },
-      ])
+      setNewLog(`ошибка слияния потоков - ${e.message}`, 'error')
     }
   }
+
+  const startRecord = () => {
+    if (!mixed.current) {
+      return setNewLog('Основной поток для записи не найден', 'error')
+    }
+    if (!socket.current) {
+      return setNewLog('Нет соединения с сокет сервером', 'error')
+    }
+    try {
+      setIsRecord(true)
+      mediaRecorder.current = new MediaRecorder(mixed.current)
+      mediaRecorder.current.ondataavailable = ({ data }) => {
+        socket.current!.emit('start-record', {
+          data,
+        })
+      }
+
+      // mediaRecorder.current.onstop = stopRecord
+      mediaRecorder.current.start(250)
+      setNewLog('Включена запись видео', 'info')
+    } catch (e: any) {
+      setIsRecord(false)
+      setNewLog(`Ошибка записи - ${e.message}`, 'error')
+    }
+  }
+
+  const stopRecord = () => {
+    setIsRecord(false)
+    socket.current!.emit('stop-record')
+    mediaRecorder.current!.ondataavailable = null
+    mediaRecorder.current = null
+    setNewLog('Запись видео остановлена', 'info')
+  }
+
+  useEffect(() => {
+    socket.current = io('http://localhost:5000')
+
+    socket.current.on('record-finished', () =>
+      setNewLog('Видео сохранено', 'success')
+    )
+    socket.current.on('record-error', () =>
+      setNewLog('Ошибка сохранения видео', 'error')
+    )
+  }, [])
 
   return (
     <div className="container">
@@ -149,18 +153,21 @@ function App() {
         <div className="video section">
           <video ref={desktopRef} muted autoPlay />
         </div>
-        <div className="video section">
+        <div className="video section mix">
+          {isRecord && <span className="recording">Rec</span>}
           <video ref={mixedRef} muted autoPlay />
         </div>
         <div className="control">
           <button onClick={getWebCam}>camera</button>
           <button onClick={getDesktop}>desctop</button>
           <button onClick={merge}>merge</button>
+          <button onClick={startRecord}>start record</button>
+          <button onClick={stopRecord}>stop record</button>
         </div>
       </div>
       <div className="log-list">
         {logs.map((log) => (
-          <div className={log.type}>
+          <div className={log.type} key={log.id}>
             {Date().normalize()} - {log.message}
           </div>
         ))}

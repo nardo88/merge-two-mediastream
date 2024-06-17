@@ -1,0 +1,52 @@
+.video-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.video {
+  height: 300px;
+
+  video {
+    max-height: 100%;
+    width: 100%;
+    object-fit: contain;
+  }
+}
+
+.section {
+  width: 33.333%;
+  border-bottom: 1px solid;
+  border-top: 1px solid;
+  border-left: 1px solid;
+  aspect-ratio: 12 / 9;
+}
+
+.control {
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.mix {
+  position: relative;
+}
+
+.recording {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  color: red;
+  font-weight: 600;
+
+  &:after {
+    content: '';
+    vertical-align: middle;
+    margin-left: 5px;
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border-radius: 50px;
+    background-color: red;
+  }
+}

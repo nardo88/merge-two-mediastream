@@ -25,6 +25,7 @@ export const Canvas: FC<CanvasProps> = ({ setNewLog, socket }) => {
       .getUserMedia({
         video: {
           width: 1920,
+          height: 1080,
         },
       })
       .then((stream) => {
@@ -37,7 +38,12 @@ export const Canvas: FC<CanvasProps> = ({ setNewLog, socket }) => {
 
   function getDesktop() {
     navigator.mediaDevices
-      .getDisplayMedia({ video: true })
+      .getDisplayMedia({
+        video: {
+          width: 1920,
+          height: 1080,
+        },
+      })
       .then((stream) => {
         desktop.current = stream
         desktopRef.current!.srcObject = stream
@@ -52,9 +58,8 @@ export const Canvas: FC<CanvasProps> = ({ setNewLog, socket }) => {
     try {
       const canvas = document.createElement('canvas')
       const context = canvas.getContext('2d')
-      // 1024x576 - 16:9
-      canvas.width = 1024
-      canvas.height = 576
+      canvas.width = 1920
+      canvas.height = 1080
       if (!desktop.current || !desktopRef.current) {
         setNewLog('Видео поток демонстрации рабочего стола не найден', 'error')
       }
@@ -99,7 +104,11 @@ export const Canvas: FC<CanvasProps> = ({ setNewLog, socket }) => {
 
     try {
       setIsRecord(true)
-      mediaRecorder.current = new MediaRecorder(mixed.current)
+      mediaRecorder.current = new MediaRecorder(mixed.current, {
+        mimeType: 'video/webm',
+        videoBitsPerSecond: 8000000,
+      })
+
       mediaRecorder.current.ondataavailable = ({ data }) => {
         socket.emit('start-record', {
           data,

@@ -47,7 +47,7 @@ export const saveData = async (data) => {
         '-c:a copy',
         '-crf 35',
         '-b:v 0',
-        '-vf scale=1280:720',
+        '-vf scale=1920:1080',
       ])
       .on('end', async () => {
         await unlink(tempFilePath)
